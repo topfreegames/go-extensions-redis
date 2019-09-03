@@ -9,9 +9,7 @@ import (
 	goredis "github.com/go-redis/redis"
 )
 
-// TODO: All() RedisClient ? relay command to all []Client in Mux
-
-// Hash needs to be a SHORT and UNIQUE string in order for Mux.On work
+// Hash needs to be a SHORT and UNIQUE string in order for Mux.On to work
 type Hash string
 
 func (h Hash) String() string {
@@ -21,6 +19,7 @@ func (h Hash) String() string {
 // Mux is the minimal set of functions a redis multiplexer must implement
 type Mux interface {
 	On(Hash) Client
+	OnMany(Hash, ...Hash) Client
 	Invalidate(Hash) error
 }
 
@@ -69,6 +68,8 @@ func NewMux(opt MuxOptions) (*BaseMux, error) {
 	}, nil
 }
 
+// WithContext returns a *BaseMux that runs operations under `ctx` and all its
+// HashClient and []Client are also patched to run operations under `ctx`
 func (m BaseMux) WithContext(ctx context.Context) *BaseMux {
 	clients := make([]Client, 0, len(m.clients))
 	for _, c := range m.clients {
@@ -85,6 +86,7 @@ func (m BaseMux) WithContext(ctx context.Context) *BaseMux {
 	}
 }
 
+// Validate MuxOptions
 func (o MuxOptions) Validate() error {
 	if o.HashClient == nil {
 		return fmt.Errorf("HashClient is required")
@@ -95,8 +97,8 @@ func (o MuxOptions) Validate() error {
 	return nil
 }
 
-// On ...
-// If it fails, it returns a Client that fails for any request
+// On guarantees that all operations for `hash` are executed on the same Client.
+// If it fails, it returns a Client that fails for any request.
 func (m BaseMux) On(hash Hash) Client {
 	var client Client
 	if err := m.WithLockOn(hash, func() { client = m.on(hash) }); err != nil {
@@ -106,11 +108,11 @@ func (m BaseMux) On(hash Hash) Client {
 }
 
 func (m BaseMux) on(hash Hash) Client {
-	// is this hash already associated with a client?
+	// is this hash already mapped to a client?
 	if cli := m.onFromHashClient(hash); cli != nil {
 		return cli
 	}
-	// if not: draw a random client and store the association
+	// if not: draw a random client and store the mapping
 	draw := rand.Int63n(m.lenClients)
 	if res := m.hashClient.Set(m.buildHashKey(hash), m.addrs[draw], m.hashMapTTL); res.Err() != nil {
 		return NewErrClient(res.Err())
@@ -118,13 +120,17 @@ func (m BaseMux) on(hash Hash) Client {
 	return m.clients[draw]
 }
 
-// OnMany ...
-// If it fails, it returns a Client that fails for any request
+// OnMany guarantees that all operations for `hash` and `many` are executed on the same Client
+// the first arg `hash` is really important here, it's the only that matters when verifying with
+// an existing mapping to a Client already exists. For all the other `many`, it's mappings are
+// overwritten with the one from `hash`.
+// If it fails, it returns a Client that fails for any request.
 func (m BaseMux) OnMany(hash Hash, many ...Hash) Client {
 	var client Client
 	err := m.WithLockOn(hash, func() {
 		client = m.on(hash)
 		addr := client.Options().Addr
+		// TODO: MGet and check if they are already set to a different one?
 		// TODO: MSetNX??
 		// TODO: EXPIRATION (PIPE?)
 		pairs := make([]interface{}, len(many)*2)
@@ -142,6 +148,7 @@ func (m BaseMux) OnMany(hash Hash, many ...Hash) Client {
 	return client
 }
 
+// WithLockOn runs a func `f` under a unique lock for `hash`
 func (m BaseMux) WithLockOn(hash Hash, f func()) error {
 	lock, err := m.hashClient.Obtain(hash.String(), 3*time.Second, LockOptions{
 		RetryCount:   5,
@@ -155,6 +162,8 @@ func (m BaseMux) WithLockOn(hash Hash, f func()) error {
 	return nil
 }
 
+// Tries to find an existing mapping of hash <-> Client.
+// Returns `nil` if none exists.
 func (m BaseMux) onFromHashClient(hash Hash) Client {
 	strCmd := m.hashClient.Get(hash.String())
 	err := strCmd.Err()
@@ -172,10 +181,12 @@ func (m BaseMux) onFromHashClient(hash Hash) Client {
 	return cli
 }
 
+// buildHashKey adds the BaseMux's hashKeyPrefix to hash.String()
 func (m BaseMux) buildHashKey(hash Hash) string {
 	return fmt.Sprintf("%s%s", m.hashKeyPrefix, hash.String())
 }
 
+// Invalidate removes the mapping for a hash
 func (m BaseMux) Invalidate(hash Hash) error {
 	return m.hashClient.Del(m.buildHashKey(hash)).Err()
 }
