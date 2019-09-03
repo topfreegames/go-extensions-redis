@@ -9,6 +9,8 @@ import (
 	goredis "github.com/go-redis/redis"
 )
 
+// TODO: All() RedisClient ? relay command to all []Client in Mux
+
 // Hash needs to be a SHORT and UNIQUE string in order for Mux.On work
 type Hash string
 
@@ -125,7 +127,7 @@ func (m BaseMux) OnMany(hash Hash, many ...Hash) Client {
 		addr := client.Options().Addr
 		// TODO: MSetNX??
 		// TODO: EXPIRATION (PIPE?)
-		pairs := make([]interface{}, 0, len(many)*2)
+		pairs := make([]interface{}, len(many)*2)
 		for i := range many {
 			pairs[2*i] = m.buildHashKey(many[i])
 			pairs[2*i+1] = addr

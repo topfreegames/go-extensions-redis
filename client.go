@@ -77,7 +77,8 @@ type BaseClient struct {
 func NewClient(opt goredis.Options) *BaseClient {
 	conn := goredis.NewClient(&opt)
 	locker := redislock.New(conn)
-	return &BaseClient{Client: conn, locker: locker}
+	// TODO: context.Background? Or just not use it when its nil
+	return &BaseClient{Client: conn, locker: locker, ctx: context.Background()}
 }
 
 func (c *BaseClient) WithContext(ctx context.Context) Client {

@@ -25,6 +25,8 @@ func (e ErrClient) Close() error {
 }
 
 func (e ErrClient) Context() context.Context {
+	// TODO: review
+	return context.Background()
 	return nil
 }
 
