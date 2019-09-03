@@ -80,6 +80,10 @@ func (e ErrClient) MGet(keys ...string) *goredis.SliceCmd {
 	return goredis.NewSliceResult(nil, e.err)
 }
 
+func (e ErrClient) MSet(pairs ...interface{}) *goredis.StatusCmd {
+	return goredis.NewStatusResult("", e.err)
+}
+
 func (e ErrClient) Options() *goredis.Options {
 	return nil
 }

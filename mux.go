@@ -96,14 +96,14 @@ func (o MuxOptions) Validate() error {
 // On ...
 // If it fails, it returns a Client that fails for any request
 func (m BaseMux) On(hash Hash) Client {
-	lock, err := m.hashClient.Obtain(hash.String(), 3*time.Second, LockOptions{
-		RetryCount:   5,
-		RetryBackoff: 25 * time.Millisecond,
-	})
-	if err != nil {
+	var client Client
+	if err := m.WithLockOn(hash, func() { client = m.on(hash) }); err != nil {
 		return NewErrClient(err)
 	}
-	defer lock.Release()
+	return client
+}
+
+func (m BaseMux) on(hash Hash) Client {
 	// is this hash already associated with a client?
 	if cli := m.onFromHashClient(hash); cli != nil {
 		return cli
@@ -114,6 +114,43 @@ func (m BaseMux) On(hash Hash) Client {
 		return NewErrClient(res.Err())
 	}
 	return m.clients[draw]
+}
+
+// OnMany ...
+// If it fails, it returns a Client that fails for any request
+func (m BaseMux) OnMany(hash Hash, many ...Hash) Client {
+	var client Client
+	err := m.WithLockOn(hash, func() {
+		client = m.on(hash)
+		addr := client.Options().Addr
+		// TODO: MSetNX??
+		// TODO: EXPIRATION (PIPE?)
+		pairs := make([]interface{}, 0, len(many)*2)
+		for i := range many {
+			pairs[2*i] = m.buildHashKey(many[i])
+			pairs[2*i+1] = addr
+		}
+		if res := m.hashClient.MSet(pairs...); res.Err() != nil {
+			client = NewErrClient(res.Err())
+		}
+	})
+	if err != nil {
+		return NewErrClient(err)
+	}
+	return client
+}
+
+func (m BaseMux) WithLockOn(hash Hash, f func()) error {
+	lock, err := m.hashClient.Obtain(hash.String(), 3*time.Second, LockOptions{
+		RetryCount:   5,
+		RetryBackoff: 25 * time.Millisecond,
+	})
+	if err != nil {
+		return err
+	}
+	defer lock.Release()
+	f()
+	return nil
 }
 
 func (m BaseMux) onFromHashClient(hash Hash) Client {

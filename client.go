@@ -27,6 +27,7 @@ type Client interface {
 	HSet(key, field string, value interface{}) *goredis.BoolCmd
 	LRange(key string, start, stop int64) *goredis.StringSliceCmd
 	MGet(keys ...string) *goredis.SliceCmd
+	MSet(pairs ...interface{}) *goredis.StatusCmd
 	Options() *goredis.Options
 	Ping() *goredis.StatusCmd
 	RPopLPush(source string, destination string) *goredis.StringCmd
