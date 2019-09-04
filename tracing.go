@@ -59,6 +59,9 @@ func makeMiddlewarePipe(
 }
 
 func trace(ctx context.Context, operationName string, tags opentracing.Tags, f func() error) error {
+	if ctx == nil {
+		return f()
+	}
 	var parent opentracing.SpanContext
 	if span := opentracing.SpanFromContext(ctx); span != nil {
 		parent = span.Context()

@@ -23,6 +23,8 @@ type Mux interface {
 	Invalidate(Hash) error
 }
 
+// BaseMux is an implementation of Mux where On and OnMany mappings are made to random clients
+// if no existing mapping for `hash` is found
 type BaseMux struct {
 	addrClientMap map[string]Client
 	addrs         []string

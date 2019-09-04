@@ -25,8 +25,6 @@ func (e ErrClient) Close() error {
 }
 
 func (e ErrClient) Context() context.Context {
-	// TODO: review
-	return context.Background()
 	return nil
 }
 
@@ -147,6 +145,7 @@ func (e ErrClient) TTL(key string) *goredis.DurationCmd {
 }
 
 func (e ErrClient) TxPipeline() goredis.Pipeliner {
+	// TODO: should be nil?
 	return nil
 }
 

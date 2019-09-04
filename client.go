@@ -9,7 +9,7 @@ import (
 	"github.com/opentracing/opentracing-go"
 )
 
-// Client that redis clients must implement
+// Client is a minimal set of functions a redis client must implement
 type Client interface {
 	BLPop(timeout time.Duration, keys ...string) *goredis.StringSliceCmd
 	Close() error
@@ -59,6 +59,8 @@ type Client interface {
 	ZScore(key, member string) *goredis.FloatCmd
 }
 
+// LockerClient is a redis Client that has support for Locker operations
+// in order to use distributed locking, for example
 type LockerClient interface {
 	Client
 	Locker
@@ -74,13 +76,15 @@ type BaseClient struct {
 	ctx    context.Context
 }
 
-func NewClient(opt goredis.Options) *BaseClient {
-	conn := goredis.NewClient(&opt)
+// NewClient creates a BaseClient instance with an underlying *goredis.Client
+// and a *redislock.Client
+func NewClient(opt *goredis.Options) *BaseClient {
+	conn := goredis.NewClient(opt)
 	locker := redislock.New(conn)
-	// TODO: context.Background? Or just not use it when its nil
-	return &BaseClient{Client: conn, locker: locker, ctx: context.Background()}
+	return &BaseClient{Client: conn, locker: locker}
 }
 
+// WithContext returns a new *BaseClient with *goredis.Client and *redislock.Client using ctx
 func (c *BaseClient) WithContext(ctx context.Context) Client {
 	conncpy := c.Client.WithContext(ctx)
 	ccpy := &BaseClient{Client: conncpy, locker: c.locker, ctx: ctx}
@@ -88,6 +92,7 @@ func (c *BaseClient) WithContext(ctx context.Context) Client {
 	return ccpy
 }
 
+// Obtain tries to hold a lock over `key` during `ttl` duration. It also
 func (c BaseClient) Obtain(key string, ttl time.Duration, opt LockOptions) (Lock, error) {
 	tags := opentracing.Tags{
 		"db.instance": c.Client.Options().DB,

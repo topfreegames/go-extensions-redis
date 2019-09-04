@@ -5,6 +5,7 @@ go 1.12
 require (
 	github.com/bsm/redislock v0.3.0
 	github.com/go-redis/redis v6.15.2+incompatible
+	github.com/golang/mock v1.3.1
 	github.com/google/go-cmp v0.3.1 // indirect
 	github.com/onsi/ginkgo v1.10.1 // indirect
 	github.com/onsi/gomega v1.7.0 // indirect
