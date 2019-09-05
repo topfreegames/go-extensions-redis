@@ -21,6 +21,7 @@ type Mux interface {
 	On(Hash) Client
 	OnMany(Hash, ...Hash) Client
 	Invalidate(Hash) error
+	WithContext(context.Context) Mux
 }
 
 // BaseMux is an implementation of Mux where On and OnMany mappings are made to random clients
@@ -52,8 +53,8 @@ func NewMux(opt MuxOptions) (*BaseMux, error) {
 	if err := opt.Validate(); err != nil {
 		return nil, err
 	}
-	addrs := make([]string, len(opt.Clients))
-	addrClientMap := map[string]Client{}
+	addrs := make([]string, 0, len(opt.Clients))
+	addrClientMap := make(map[string]Client, len(opt.Clients))
 	for _, c := range opt.Clients {
 		addr := c.Options().Addr
 		addrClientMap[addr] = c
@@ -72,7 +73,7 @@ func NewMux(opt MuxOptions) (*BaseMux, error) {
 
 // WithContext returns a *BaseMux that runs operations under `ctx` and all its
 // HashClient and []Client are also patched to run operations under `ctx`
-func (m BaseMux) WithContext(ctx context.Context) *BaseMux {
+func (m BaseMux) WithContext(ctx context.Context) Mux {
 	clients := make([]Client, 0, len(m.clients))
 	for _, c := range m.clients {
 		clients = append(clients, c.WithContext(ctx))
@@ -124,7 +125,7 @@ func (m BaseMux) on(hash Hash) Client {
 
 // OnMany guarantees that all operations for `hash` and `many` are executed on the same Client
 // the first arg `hash` is really important here, it's the only that matters when verifying with
-// an existing mapping to a Client already exists. For all the other `many`, it's mappings are
+// an existing mapping to a Client already exists. For all the other `many`, their mappings are
 // overwritten with the one from `hash`.
 // If it fails, it returns a Client that fails for any request.
 func (m BaseMux) OnMany(hash Hash, many ...Hash) Client {
@@ -169,10 +170,10 @@ func (m BaseMux) WithLockOn(hash Hash, f func()) error {
 func (m BaseMux) onFromHashClient(hash Hash) Client {
 	strCmd := m.hashClient.Get(hash.String())
 	err := strCmd.Err()
-	if err != nil && err != goredis.Nil {
+	if err != goredis.Nil {
 		return NewErrClient(err)
 	}
-	if err != nil && err == goredis.Nil {
+	if err == goredis.Nil {
 		return nil
 	}
 	addr := strCmd.String()
