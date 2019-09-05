@@ -7,6 +7,8 @@ import (
 	goredis "github.com/go-redis/redis"
 )
 
+var _ Client = &ErrClient{}
+
 // ErrClient returns an error for each Client operation
 type ErrClient struct {
 	err error
