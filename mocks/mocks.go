@@ -894,3 +894,17 @@ func (mr *MockMuxMockRecorder) OnMany(arg0 interface{}, arg1 ...interface{}) *go
 	varargs := append([]interface{}{arg0}, arg1...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "OnMany", reflect.TypeOf((*MockMux)(nil).OnMany), varargs...)
 }
+
+// WithContext mocks base method
+func (m *MockMux) WithContext(arg0 context.Context) go_extensions_redis.Mux {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "WithContext", arg0)
+	ret0, _ := ret[0].(go_extensions_redis.Mux)
+	return ret0
+}
+
+// WithContext indicates an expected call of WithContext
+func (mr *MockMuxMockRecorder) WithContext(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WithContext", reflect.TypeOf((*MockMux)(nil).WithContext), arg0)
+}
