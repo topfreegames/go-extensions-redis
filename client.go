@@ -2,6 +2,7 @@ package redis
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/bsm/redislock"
@@ -78,10 +79,32 @@ type BaseClient struct {
 
 // NewClient creates a BaseClient instance with an underlying *goredis.Client
 // and a *redislock.Client
-func NewClient(opt *goredis.Options) *BaseClient {
-	conn := goredis.NewClient(opt)
+func NewClient(opt *goredis.Options) (*BaseClient, error) {
+	conn, err := newClientConn(opt)
+	if err != nil {
+		return nil, err
+	}
 	locker := redislock.New(conn)
-	return &BaseClient{Client: conn, locker: locker}
+	return &BaseClient{Client: conn, locker: locker}, nil
+}
+
+func newClientConn(opt *goredis.Options) (*goredis.Client, error) {
+	connected := make(chan bool, 1)
+	onConnect := opt.OnConnect
+	opt.OnConnect = func(conn *goredis.Conn) error {
+		if onConnect != nil {
+			if err := onConnect(conn); err != nil {
+				return err
+			}
+		}
+		connected <- true
+		return nil
+	}
+	client := goredis.NewClient(opt)
+	if err := waitConnection(opt.DialTimeout, connected); err != nil {
+		return nil, err
+	}
+	return client, nil
 }
 
 // WithContext returns a new *BaseClient with *goredis.Client and *redislock.Client using ctx
@@ -111,4 +134,25 @@ func (c BaseClient) Obtain(key string, ttl time.Duration, opt LockOptions) (Lock
 func (c BaseClient) obtain(key string, ttl time.Duration, opt LockOptions) (Lock, error) {
 	rlopt := opt.toRedisLockOptions()
 	return c.locker.Obtain(key, ttl, &rlopt)
+}
+
+func (c BaseClient) Connected() bool {
+	result := c.Ping()
+	if result == nil {
+		return false
+	}
+	str, err := result.Result()
+	if err != nil {
+		return false
+	}
+	return str == "PONG"
+}
+
+func waitConnection(timeout time.Duration, connected chan bool) error {
+	select {
+	case <-connected:
+		return nil
+	case <-time.After(timeout):
+		return fmt.Errorf("timed out while waiting for Redis to connect")
+	}
 }
