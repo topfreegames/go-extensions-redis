@@ -90,19 +90,8 @@ func NewClient(opt *goredis.Options) (*BaseClient, error) {
 }
 
 func newClientConn(opt *goredis.Options) (*goredis.Client, error) {
-	connected := make(chan bool, 1)
-	onConnect := opt.OnConnect
-	opt.OnConnect = func(conn *goredis.Conn) error {
-		if onConnect != nil {
-			if err := onConnect(conn); err != nil {
-				return err
-			}
-		}
-		connected <- true
-		return nil
-	}
 	client := goredis.NewClient(opt)
-	if err := waitConnection(opt.DialTimeout, connected); err != nil {
+	if err := waitConnection(client); err != nil {
 		return nil, err
 	}
 	return client, nil
@@ -137,8 +126,24 @@ func (c BaseClient) obtain(key string, ttl time.Duration, opt LockOptions) (Lock
 	return c.locker.Obtain(key, ttl, &rlopt)
 }
 
-func (c BaseClient) Connected() bool {
-	result := c.Ping()
+func waitConnection(client *goredis.Client) error {
+	timeout := client.Options().DialTimeout
+	ticker := time.NewTicker(10 * time.Millisecond)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ticker.C:
+			if connected(client) {
+				return nil
+			}
+		case <-time.After(timeout):
+			return fmt.Errorf("timed out while waiting for Redis to connect")
+		}
+	}
+}
+
+func connected(client *goredis.Client) bool {
+	result := client.Ping()
 	if result == nil {
 		return false
 	}
@@ -147,13 +152,4 @@ func (c BaseClient) Connected() bool {
 		return false
 	}
 	return str == "PONG"
-}
-
-func waitConnection(timeout time.Duration, connected chan bool) error {
-	select {
-	case <-connected:
-		return nil
-	case <-time.After(timeout):
-		return fmt.Errorf("timed out while waiting for Redis to connect")
-	}
 }
