@@ -74,6 +74,10 @@ func (e ErrClient) HSet(key, field string, value interface{}) *goredis.BoolCmd {
 	return goredis.NewBoolResult(false, e.err)
 }
 
+func (e ErrClient) LPop(key string) *goredis.StringCmd {
+	return goredis.NewStringResult("", e.err)
+}
+
 func (e ErrClient) LRange(key string, start, stop int64) *goredis.StringSliceCmd {
 	return goredis.NewStringSliceResult(nil, e.err)
 }

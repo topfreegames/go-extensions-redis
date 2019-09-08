@@ -26,6 +26,7 @@ type Client interface {
 	HMGet(string, ...string) *goredis.SliceCmd
 	HMSet(string, map[string]interface{}) *goredis.StatusCmd
 	HSet(key, field string, value interface{}) *goredis.BoolCmd
+	LPop(key string) *goredis.StringCmd
 	LRange(key string, start, stop int64) *goredis.StringSliceCmd
 	MGet(keys ...string) *goredis.SliceCmd
 	MSet(pairs ...interface{}) *goredis.StatusCmd
