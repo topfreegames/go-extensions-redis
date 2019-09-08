@@ -5,11 +5,10 @@
 package mocks
 
 import (
-	reflect "reflect"
-	time "time"
-
 	redis "github.com/go-redis/redis"
 	gomock "github.com/golang/mock/gomock"
+	reflect "reflect"
+	time "time"
 )
 
 // MockPipeliner is a mock of Pipeliner interface

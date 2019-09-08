@@ -265,6 +265,20 @@ func (mr *MockClientMockRecorder) HSet(arg0, arg1, arg2 interface{}) *gomock.Cal
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HSet", reflect.TypeOf((*MockClient)(nil).HSet), arg0, arg1, arg2)
 }
 
+// LPop mocks base method
+func (m *MockClient) LPop(arg0 string) *redis.StringCmd {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "LPop", arg0)
+	ret0, _ := ret[0].(*redis.StringCmd)
+	return ret0
+}
+
+// LPop indicates an expected call of LPop
+func (mr *MockClientMockRecorder) LPop(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LPop", reflect.TypeOf((*MockClient)(nil).LPop), arg0)
+}
+
 // LRange mocks base method
 func (m *MockClient) LRange(arg0 string, arg1, arg2 int64) *redis.StringSliceCmd {
 	m.ctrl.T.Helper()
