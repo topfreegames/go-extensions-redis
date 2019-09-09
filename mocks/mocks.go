@@ -876,6 +876,24 @@ func (mr *MockMuxMockRecorder) Invalidate(arg0 interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Invalidate", reflect.TypeOf((*MockMux)(nil).Invalidate), arg0)
 }
 
+// InvalidateMany mocks base method
+func (m *MockMux) InvalidateMany(arg0 ...go_extensions_redis.Hash) error {
+	m.ctrl.T.Helper()
+	varargs := []interface{}{}
+	for _, a := range arg0 {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "InvalidateMany", varargs...)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// InvalidateMany indicates an expected call of InvalidateMany
+func (mr *MockMuxMockRecorder) InvalidateMany(arg0 ...interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InvalidateMany", reflect.TypeOf((*MockMux)(nil).InvalidateMany), arg0...)
+}
+
 // On mocks base method
 func (m *MockMux) On(arg0 go_extensions_redis.Hash) go_extensions_redis.Client {
 	m.ctrl.T.Helper()
