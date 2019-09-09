@@ -28,10 +28,10 @@ and run it.
 ## TODO:
 
 - [ ] Tests
-  - [ ] BaseMux implements Mux?
-  - [ ] BaseClient implements Client?
+  - [X] BaseMux implements Mux?
+  - [X] BaseClient implements Client?
   - [ ] Tracing
-  - [ ] ErrClient
+  - [X] ErrClient
 - [X] Mocks
 - [X] Docs
 - [ ] ErrClient Pipeliner?

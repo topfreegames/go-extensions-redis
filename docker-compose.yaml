@@ -4,4 +4,3 @@ services:
     image: redis:5-alpine
     ports:
       - "6666:6379"
-

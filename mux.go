@@ -21,6 +21,7 @@ type Mux interface {
 	On(Hash) Client
 	OnMany(Hash, ...Hash) Client
 	Invalidate(Hash) error
+	InvalidateMany(...Hash) error
 	WithContext(context.Context) Mux
 }
 
@@ -45,9 +46,11 @@ type MuxOptions struct {
 	// Clients are all clients to which we wish to multiplex redis operations
 	Clients []Client
 	// HashMapTTL is the TTL for hash association with a redis client
-	// Default: 0 - no TTL
+	// Default: -1 - no TTL
 	HashMapTTL time.Duration
 	// HashKeyPrefix is the prefix added to each hash when mapping in HashClient
+	// Can't be empty
+	// Default: "hmk-"
 	HashKeyPrefix string
 	// WithLockOnTTL is the TTL of the lock acquired by WithLockOn
 	// Default: 3s
@@ -68,6 +71,9 @@ func NewMux(opt MuxOptions) (*BaseMux, error) {
 		addr := c.Options().Addr
 		addrClientMap[addr] = c
 		addrs = append(addrs, addr)
+	}
+	if opt.HashKeyPrefix == "" {
+		opt.HashKeyPrefix = "hmk-"
 	}
 	if opt.LockOptions == nil {
 		opt.LockOptions = &LockOptions{
@@ -167,8 +173,10 @@ func (m BaseMux) OnMany(hash Hash, many ...Hash) Client {
 		if res := m.hashClient.MSet(pairs...); res.Err() != nil {
 			client = NewErrClient(res.Err())
 		}
-		if _, err := pipe.Exec(); err != nil {
-			client = NewErrClient(err)
+		if m.hashMapTTL > 0 {
+			if _, err := pipe.Exec(); err != nil {
+				client = NewErrClient(err)
+			}
 		}
 	})
 	if err != nil {
@@ -183,6 +191,9 @@ func (m BaseMux) WithLockOn(hash Hash, f func()) error {
 		RetryBackoff: m.lockOptions.RetryBackoff,
 		RetryCount:   m.lockOptions.RetryCount,
 	})
+	if lock == nil {
+		return fmt.Errorf("couldn't obtain lock for %v", hash)
+	}
 	if err != nil {
 		return err
 	}
@@ -194,15 +205,19 @@ func (m BaseMux) WithLockOn(hash Hash, f func()) error {
 // Tries to find an existing mapping of hash <-> Client.
 // Returns `nil` if none exists.
 func (m BaseMux) onFromHashClient(hash Hash) Client {
-	strCmd := m.hashClient.Get(hash.String())
+	key := m.buildHashKey(hash)
+	strCmd := m.hashClient.Get(key)
 	err := strCmd.Err()
-	if err != goredis.Nil {
+	if err != nil && err != goredis.Nil {
 		return NewErrClient(err)
 	}
 	if err == goredis.Nil {
 		return nil
 	}
-	addr := strCmd.String()
+	addr, err := strCmd.Result()
+	if err != nil {
+		return NewErrClient(err)
+	}
 	cli, ok := m.addrClientMap[addr]
 	if !ok {
 		return nil
@@ -218,6 +233,18 @@ func (m BaseMux) buildHashKey(hash Hash) string {
 // Invalidate removes the mapping for a hash
 func (m BaseMux) Invalidate(hash Hash) error {
 	return m.hashClient.Del(m.buildHashKey(hash)).Err()
+}
+
+// InvalidateMany removes the mapping for `many` hashes
+func (m BaseMux) InvalidateMany(many ...Hash) error {
+	if len(many) == 0 {
+		return nil
+	}
+	keys := make([]string, len(many))
+	for i := range many {
+		keys[i] = m.buildHashKey(many[i])
+	}
+	return m.hashClient.Del(keys...).Err()
 }
 
 var _ Mux = (*BaseMux)(nil)
