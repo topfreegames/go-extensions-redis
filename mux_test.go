@@ -7,7 +7,10 @@ import (
 	goredis "github.com/go-redis/redis"
 	"github.com/stretchr/testify/assert"
 	redis "github.com/topfreegames/go-extensions-redis"
+	"github.com/topfreegames/go-extensions-redis/mocks"
 )
+
+var _ redis.Mux = (*mocks.MockMux)(nil)
 
 func TestMux_WithLockOn(t *testing.T) {
 	cliopt, err := goredis.ParseURL("redis://localhost:6666")

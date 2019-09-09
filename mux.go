@@ -46,7 +46,7 @@ type MuxOptions struct {
 	// Clients are all clients to which we wish to multiplex redis operations
 	Clients []Client
 	// HashMapTTL is the TTL for hash association with a redis client
-	// Default: -1 - no TTL
+	// Default: 0 - no TTL
 	HashMapTTL time.Duration
 	// HashKeyPrefix is the prefix added to each hash when mapping in HashClient
 	// Can't be empty

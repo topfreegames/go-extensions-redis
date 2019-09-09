@@ -7,7 +7,10 @@ import (
 	goredis "github.com/go-redis/redis"
 	"github.com/stretchr/testify/assert"
 	redis "github.com/topfreegames/go-extensions-redis"
+	"github.com/topfreegames/go-extensions-redis/mocks"
 )
+
+var _ redis.Client = (*mocks.MockClient)(nil)
 
 func TestNewClient_Connect(t *testing.T) {
 	opt, err := goredis.ParseURL("redis://localhost:6666")
