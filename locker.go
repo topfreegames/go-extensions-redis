@@ -29,6 +29,13 @@ type LockOptions struct {
 	RetryCount int
 }
 
+func DefaultLockOptions() LockOptions {
+	return LockOptions{
+		RetryBackoff: 100 * time.Millisecond,
+		RetryCount:   0,
+	}
+}
+
 func (l LockOptions) toRedisLockOptions() redislock.Options {
 	return redislock.Options{
 		RetryBackoff: l.RetryBackoff,

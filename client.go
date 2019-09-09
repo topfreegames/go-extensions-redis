@@ -127,19 +127,16 @@ func (c BaseClient) obtain(key string, ttl time.Duration, opt LockOptions) (Lock
 }
 
 func waitConnection(client *goredis.Client) error {
-	timeout := client.Options().DialTimeout
-	ticker := time.NewTicker(10 * time.Millisecond)
-	defer ticker.Stop()
-	for {
-		select {
-		case <-ticker.C:
-			if connected(client) {
-				return nil
-			}
-		case <-time.After(timeout):
+	timeout := time.Now().Add(client.Options().DialTimeout)
+	for range time.Tick(10 * time.Millisecond) {
+		if connected(client) {
+			return nil
+		}
+		if time.Now().After(timeout) {
 			return fmt.Errorf("timed out while waiting for Redis to connect")
 		}
 	}
+	return nil
 }
 
 func connected(client *goredis.Client) bool {
@@ -153,3 +150,6 @@ func connected(client *goredis.Client) bool {
 	}
 	return str == "PONG"
 }
+
+var _ Client = (*BaseClient)(nil)
+var _ LockerClient = (*BaseClient)(nil)

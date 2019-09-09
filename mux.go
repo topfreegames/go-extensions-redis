@@ -34,6 +34,8 @@ type BaseMux struct {
 	hashKeyPrefix string
 	hashMapTTL    time.Duration
 	lenClients    int64
+	lockOptions   LockOptions
+	withLockOnTTL time.Duration
 }
 
 type MuxOptions struct {
@@ -47,6 +49,13 @@ type MuxOptions struct {
 	HashMapTTL time.Duration
 	// HashKeyPrefix is the prefix added to each hash when mapping in HashClient
 	HashKeyPrefix string
+	// WithLockOnTTL is the TTL of the lock acquired by WithLockOn
+	// Default: 3s
+	WithLockOnTTL time.Duration
+	// LockOptions are the LockOptions used by WithLockOn
+	// In case of a nil value, default values are used:
+	// RetryBackoff: 5 * time.Millisecond, RetryCount: 5
+	*LockOptions
 }
 
 func NewMux(opt MuxOptions) (*BaseMux, error) {
@@ -60,6 +69,15 @@ func NewMux(opt MuxOptions) (*BaseMux, error) {
 		addrClientMap[addr] = c
 		addrs = append(addrs, addr)
 	}
+	if opt.LockOptions == nil {
+		opt.LockOptions = &LockOptions{
+			RetryBackoff: 5 * time.Millisecond,
+			RetryCount:   5,
+		}
+	}
+	if opt.WithLockOnTTL == 0 {
+		opt.WithLockOnTTL = 3 * time.Second
+	}
 	return &BaseMux{
 		addrClientMap: addrClientMap,
 		addrs:         addrs,
@@ -68,6 +86,8 @@ func NewMux(opt MuxOptions) (*BaseMux, error) {
 		hashKeyPrefix: opt.HashKeyPrefix,
 		hashMapTTL:    opt.HashMapTTL,
 		lenClients:    int64(len(opt.Clients)),
+		lockOptions:   *opt.LockOptions,
+		withLockOnTTL: opt.WithLockOnTTL,
 	}, nil
 }
 
@@ -86,6 +106,8 @@ func (m BaseMux) WithContext(ctx context.Context) Mux {
 		hashKeyPrefix: m.hashKeyPrefix,
 		hashMapTTL:    m.hashMapTTL,
 		lenClients:    m.lenClients,
+		lockOptions:   m.lockOptions,
+		withLockOnTTL: m.withLockOnTTL,
 	}
 }
 
@@ -133,16 +155,20 @@ func (m BaseMux) OnMany(hash Hash, many ...Hash) Client {
 	err := m.WithLockOn(hash, func() {
 		client = m.on(hash)
 		addr := client.Options().Addr
-		// TODO: MGet and check if they are already set to a different one?
-		// TODO: MSetNX??
-		// TODO: EXPIRATION (PIPE?)
+		pipe := client.TxPipeline()
+		pipe.PExpire(m.buildHashKey(hash), m.hashMapTTL)
 		pairs := make([]interface{}, len(many)*2)
 		for i := range many {
-			pairs[2*i] = m.buildHashKey(many[i])
+			key := m.buildHashKey(many[i])
+			pairs[2*i] = key
 			pairs[2*i+1] = addr
+			pipe.PExpire(key, m.hashMapTTL)
 		}
 		if res := m.hashClient.MSet(pairs...); res.Err() != nil {
 			client = NewErrClient(res.Err())
+		}
+		if _, err := pipe.Exec(); err != nil {
+			client = NewErrClient(err)
 		}
 	})
 	if err != nil {
@@ -153,9 +179,9 @@ func (m BaseMux) OnMany(hash Hash, many ...Hash) Client {
 
 // WithLockOn runs a func `f` under a unique lock for `hash`
 func (m BaseMux) WithLockOn(hash Hash, f func()) error {
-	lock, err := m.hashClient.Obtain(hash.String(), 3*time.Second, LockOptions{
-		RetryCount:   5,
-		RetryBackoff: 25 * time.Millisecond,
+	lock, err := m.hashClient.Obtain(hash.String(), m.withLockOnTTL, LockOptions{
+		RetryBackoff: m.lockOptions.RetryBackoff,
+		RetryCount:   m.lockOptions.RetryCount,
 	})
 	if err != nil {
 		return err
@@ -193,3 +219,5 @@ func (m BaseMux) buildHashKey(hash Hash) string {
 func (m BaseMux) Invalidate(hash Hash) error {
 	return m.hashClient.Del(m.buildHashKey(hash)).Err()
 }
+
+var _ Mux = (*BaseMux)(nil)
