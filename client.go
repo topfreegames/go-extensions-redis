@@ -128,7 +128,9 @@ func (c BaseClient) obtain(key string, ttl time.Duration, opt LockOptions) (Lock
 
 func waitConnection(client *goredis.Client) error {
 	timeout := time.Now().Add(client.Options().DialTimeout)
-	for range time.Tick(10 * time.Millisecond) {
+	ticker := time.NewTicker(10 * time.Millisecond)
+	defer ticker.Stop()
+	for range ticker.C {
 		if connected(client) {
 			return nil
 		}
