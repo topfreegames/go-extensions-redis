@@ -2,6 +2,7 @@ package redis
 
 import (
 	"context"
+	"fmt"
 
 	goredis "github.com/go-redis/redis"
 	"github.com/opentracing/opentracing-go"
@@ -25,7 +26,7 @@ func makeMiddleware(
 				"db.type":      "redis",
 				"span.kind":    "client",
 			}
-			return trace(client.Context(), "redis pipe", tags, func() error {
+			return trace(client.Context(), fmt.Sprintf("redis %s", cmd.Name()), tags, func() error {
 				return old(cmd)
 			})
 		}
@@ -79,6 +80,9 @@ func trace(ctx context.Context, operationName string, tags opentracing.Tags, f f
 }
 
 func parseLong(cmd goredis.Cmder) string {
-	// TODO: Cmder doesnt have String() anymore
-	return cmd.Name()
+	stmt := cmd.Name()
+	for _, arg := range cmd.Args() {
+		stmt = fmt.Sprintf("%s %v", stmt, arg)
+	}
+	return stmt
 }
