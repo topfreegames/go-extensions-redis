@@ -25,8 +25,8 @@ func TestNewMux_DefaultOptions(t *testing.T) {
 	assert.Equal(t, mux.hashKeyPrefix, "hmk-")
 	assert.Equal(t, int(mux.hashMapTTL), 0)
 	assert.Equal(t, mux.withLockOnTTL, 3*time.Second)
-	assert.Equal(t, mux.lockOptions.RetryBackoff, 5*time.Millisecond)
-	assert.Equal(t, mux.lockOptions.RetryCount, 5)
+	assert.Equal(t, mux.lockOptions.MinTime, 16*time.Millisecond)
+	assert.Equal(t, mux.lockOptions.MaxTime, 64*time.Millisecond)
 }
 
 func TestNewMux_HashClientAndClients(t *testing.T) {

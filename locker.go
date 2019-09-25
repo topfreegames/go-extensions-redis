@@ -20,25 +20,24 @@ type Locker interface {
 
 // LockOptions define available settings for Locker.Obtain
 type LockOptions struct {
-	// RetryBackoff is the time to wait between retries
-	// Default: 100ms
-	RetryBackoff time.Duration
-	// RetryCount is the amount of times to retry obtaining the lock
-	// in case it's not available on previous tries
-	// Default: 0
-	RetryCount int
+	// ExponentialBackoff MinTime retry
+	// Default: 16ms
+	// the recommended minimum value is not less than 16ms (redislock doc)
+	MinTime time.Duration
+	// ExponentialBackoff MinTime retry
+	// Default: 64ms
+	MaxTime time.Duration
 }
 
 func DefaultLockOptions() LockOptions {
 	return LockOptions{
-		RetryBackoff: 100 * time.Millisecond,
-		RetryCount:   0,
+		MinTime: 16 * time.Millisecond,
+		MaxTime: 64 * time.Millisecond,
 	}
 }
 
 func (l LockOptions) toRedisLockOptions() redislock.Options {
 	return redislock.Options{
-		RetryBackoff: l.RetryBackoff,
-		RetryCount:   l.RetryCount,
+		RetryStrategy: redislock.ExponentialBackoff(l.MinTime, l.MaxTime),
 	}
 }
