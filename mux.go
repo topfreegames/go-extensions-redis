@@ -188,6 +188,7 @@ func (m BaseMux) WithLockOn(hash Hash, f func()) error {
 	lock, err := m.hashClient.Obtain(hash.String(), m.withLockOnTTL, LockOptions{
 		MinTime: m.lockOptions.MinTime,
 		MaxTime: m.lockOptions.MaxTime,
+		Limit:   m.lockOptions.Limit,
 	})
 	if lock == nil {
 		return fmt.Errorf("couldn't obtain lock for %v", hash)

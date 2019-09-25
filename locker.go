@@ -27,17 +27,24 @@ type LockOptions struct {
 	// ExponentialBackoff MinTime retry
 	// Default: 64ms
 	MaxTime time.Duration
+	// ExponentialBackoff retry limit
+	// Default: 4
+	Limit int
 }
 
 func DefaultLockOptions() LockOptions {
 	return LockOptions{
 		MinTime: 16 * time.Millisecond,
 		MaxTime: 64 * time.Millisecond,
+		Limit:   4,
 	}
 }
 
 func (l LockOptions) toRedisLockOptions() redislock.Options {
 	return redislock.Options{
-		RetryStrategy: redislock.ExponentialBackoff(l.MinTime, l.MaxTime),
+		RetryStrategy: redislock.LimitRetry(
+			redislock.ExponentialBackoff(l.MinTime, l.MaxTime),
+			l.Limit,
+		),
 	}
 }
