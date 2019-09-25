@@ -56,8 +56,8 @@ type MuxOptions struct {
 	// Default: 3s
 	WithLockOnTTL time.Duration
 	// LockOptions are the LockOptions used by WithLockOn
-	// In case of a nil value, default values are used:
-	// RetryBackoff: 5 * time.Millisecond, RetryCount: 5
+	// In case of a nil an ExponentialBackoff will be used with
+	// from 16ms to 64ms
 	*LockOptions
 }
 
@@ -76,10 +76,8 @@ func NewMux(opt MuxOptions) (*BaseMux, error) {
 		opt.HashKeyPrefix = "hmk-"
 	}
 	if opt.LockOptions == nil {
-		opt.LockOptions = &LockOptions{
-			RetryBackoff: 5 * time.Millisecond,
-			RetryCount:   5,
-		}
+		options := DefaultLockOptions()
+		opt.LockOptions = &options
 	}
 	if opt.WithLockOnTTL == 0 {
 		opt.WithLockOnTTL = 3 * time.Second
@@ -188,8 +186,8 @@ func (m BaseMux) OnMany(hash Hash, many ...Hash) Client {
 // WithLockOn runs a func `f` under a unique lock for `hash`
 func (m BaseMux) WithLockOn(hash Hash, f func()) error {
 	lock, err := m.hashClient.Obtain(hash.String(), m.withLockOnTTL, LockOptions{
-		RetryBackoff: m.lockOptions.RetryBackoff,
-		RetryCount:   m.lockOptions.RetryCount,
+		MinTime: m.lockOptions.MinTime,
+		MaxTime: m.lockOptions.MaxTime,
 	})
 	if lock == nil {
 		return fmt.Errorf("couldn't obtain lock for %v", hash)
