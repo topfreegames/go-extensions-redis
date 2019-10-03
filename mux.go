@@ -18,6 +18,7 @@ func (h Hash) String() string {
 
 // Mux is the minimal set of functions a redis multiplexer must implement
 type Mux interface {
+	All() []Client
 	On(Hash) Client
 	OnMany(Hash, ...Hash) Client
 	Invalidate(Hash) error
@@ -93,6 +94,10 @@ func NewMux(opt MuxOptions) (*BaseMux, error) {
 		lockOptions:   *opt.LockOptions,
 		withLockOnTTL: opt.WithLockOnTTL,
 	}, nil
+}
+
+func (m BaseMux) All() []Client {
+	return m.clients
 }
 
 // WithContext returns a *BaseMux that runs operations under `ctx` and all its

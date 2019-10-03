@@ -343,6 +343,20 @@ func (mr *MockClientMockRecorder) Options() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Options", reflect.TypeOf((*MockClient)(nil).Options))
 }
 
+// PTTL mocks base method
+func (m *MockClient) PTTL(arg0 string) *redis.DurationCmd {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "PTTL", arg0)
+	ret0, _ := ret[0].(*redis.DurationCmd)
+	return ret0
+}
+
+// PTTL indicates an expected call of PTTL
+func (mr *MockClientMockRecorder) PTTL(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PTTL", reflect.TypeOf((*MockClient)(nil).PTTL), arg0)
+}
+
 // Ping mocks base method
 func (m *MockClient) Ping() *redis.StatusCmd {
 	m.ctrl.T.Helper()
@@ -860,6 +874,20 @@ func NewMockMux(ctrl *gomock.Controller) *MockMux {
 // EXPECT returns an object that allows the caller to indicate expected use
 func (m *MockMux) EXPECT() *MockMuxMockRecorder {
 	return m.recorder
+}
+
+// All mocks base method
+func (m *MockMux) All() []go_extensions_redis.Client {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "All")
+	ret0, _ := ret[0].([]go_extensions_redis.Client)
+	return ret0
+}
+
+// All indicates an expected call of All
+func (mr *MockMuxMockRecorder) All() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "All", reflect.TypeOf((*MockMux)(nil).All))
 }
 
 // Invalidate mocks base method

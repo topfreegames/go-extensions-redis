@@ -150,6 +150,10 @@ func (e ErrClient) TTL(key string) *goredis.DurationCmd {
 	return goredis.NewDurationResult(0, e.err)
 }
 
+func (e ErrClient) PTTL(key string) *goredis.DurationCmd {
+	return goredis.NewDurationResult(0, e.err)
+}
+
 func (e ErrClient) TxPipeline() goredis.Pipeliner {
 	// TODO: should be nil?
 	return nil

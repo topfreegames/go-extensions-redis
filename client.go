@@ -45,6 +45,7 @@ type Client interface {
 	Set(key string, value interface{}, expiration time.Duration) *goredis.StatusCmd
 	SetNX(key string, value interface{}, expiration time.Duration) *goredis.BoolCmd
 	TTL(key string) *goredis.DurationCmd
+	PTTL(key string) *goredis.DurationCmd
 	TxPipeline() goredis.Pipeliner
 	WithContext(context.Context) Client
 	ZAdd(key string, members ...goredis.Z) *goredis.IntCmd

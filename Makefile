@@ -10,5 +10,5 @@ mocks:
 
 test:
 	@docker-compose up -d redis
-	@go test
+	@go test -tags=unit -v
 	@docker-compose down

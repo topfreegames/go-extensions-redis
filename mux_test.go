@@ -1,3 +1,5 @@
+// build +unit
+
 package redis_test
 
 import (
@@ -118,4 +120,110 @@ func TestMux_InvalidateMany(t *testing.T) {
 	addr, err = strCmd.Result()
 	assert.Equal(t, addr, "")
 	assert.Error(t, err, "redis: nil")
+}
+
+func TestMux_On_ZeroTTL(t *testing.T) {
+	cliopt, err := goredis.ParseURL("redis://localhost:6666")
+	cliopt.DialTimeout = 20 * time.Millisecond
+	assert.Nil(t, err)
+	client, err := redis.NewClient(cliopt)
+	assert.Nil(t, err)
+	muxopt := redis.MuxOptions{
+		HashClient: client,
+		Clients:    []redis.Client{client},
+	}
+	mux, err := redis.NewMux(muxopt)
+	cmd := client.FlushAll()
+	assert.Nil(t, cmd.Err())
+	hash := redis.Hash("some_hash")
+	hashCli := mux.On(hash)
+	assert.Equal(t, hashCli, client)
+	durCmd := client.PTTL("hmk-some_hash")
+	assert.NotNil(t, durCmd)
+	dur, err := durCmd.Result()
+	assert.NoError(t, err)
+	assert.Equal(t, time.Duration(-1000000), dur)
+}
+
+func TestMux_On_WithTTL(t *testing.T) {
+	cliopt, err := goredis.ParseURL("redis://localhost:6666")
+	cliopt.DialTimeout = 20 * time.Millisecond
+	assert.Nil(t, err)
+	client, err := redis.NewClient(cliopt)
+	assert.Nil(t, err)
+	muxopt := redis.MuxOptions{
+		Clients:    []redis.Client{client},
+		HashClient: client,
+		HashMapTTL: 10 * time.Millisecond,
+	}
+	mux, err := redis.NewMux(muxopt)
+	cmd := client.FlushAll()
+	assert.Nil(t, cmd.Err())
+	hash := redis.Hash("some_hash")
+	hashCli := mux.On(hash)
+	assert.Equal(t, hashCli, client)
+	durCmd := client.PTTL("hmk-some_hash")
+	assert.NotNil(t, durCmd)
+	dur, err := durCmd.Result()
+	assert.NoError(t, err)
+	assert.True(t, dur.Milliseconds() >= 5, dur.Milliseconds() <= 10)
+}
+
+func TestMux_OnMany_WithoutTTL(t *testing.T) {
+	cliopt, err := goredis.ParseURL("redis://localhost:6666")
+	cliopt.DialTimeout = 20 * time.Millisecond
+	assert.Nil(t, err)
+	client, err := redis.NewClient(cliopt)
+	assert.Nil(t, err)
+	muxopt := redis.MuxOptions{
+		Clients:    []redis.Client{client},
+		HashClient: client,
+	}
+	mux, err := redis.NewMux(muxopt)
+	cmd := client.FlushAll()
+	assert.Nil(t, cmd.Err())
+	hash0 := redis.Hash("some_hash_0")
+	hash1 := redis.Hash("some_hash_1")
+	hashCli := mux.OnMany(hash0, hash1)
+	assert.Equal(t, hashCli, client)
+	durCmd := client.PTTL("hmk-some_hash_0")
+	assert.NotNil(t, durCmd)
+	dur, err := durCmd.Result()
+	assert.NoError(t, err)
+	assert.Equal(t, time.Duration(-1000000), dur)
+	durCmd = client.PTTL("hmk-some_hash_1")
+	assert.NotNil(t, durCmd)
+	dur, err = durCmd.Result()
+	assert.NoError(t, err)
+	assert.Equal(t, time.Duration(-1000000), dur)
+}
+
+func TestMux_OnMany_WithTTL(t *testing.T) {
+	cliopt, err := goredis.ParseURL("redis://localhost:6666")
+	cliopt.DialTimeout = 20 * time.Millisecond
+	assert.Nil(t, err)
+	client, err := redis.NewClient(cliopt)
+	assert.Nil(t, err)
+	muxopt := redis.MuxOptions{
+		Clients:    []redis.Client{client},
+		HashClient: client,
+		HashMapTTL: 15 * time.Millisecond,
+	}
+	mux, err := redis.NewMux(muxopt)
+	cmd := client.FlushAll()
+	assert.Nil(t, cmd.Err())
+	hash0 := redis.Hash("some_hash_0")
+	hash1 := redis.Hash("some_hash_1")
+	hashCli := mux.OnMany(hash0, hash1)
+	assert.Equal(t, hashCli, client)
+	durCmd := client.PTTL("hmk-some_hash_0")
+	assert.NotNil(t, durCmd)
+	dur, err := durCmd.Result()
+	assert.NoError(t, err)
+	assert.True(t, dur.Milliseconds() >= 10, dur.Milliseconds() <= 15)
+	durCmd = client.PTTL("hmk-some_hash_1")
+	assert.NotNil(t, durCmd)
+	dur, err = durCmd.Result()
+	assert.NoError(t, err)
+	assert.True(t, dur.Milliseconds() >= 10, dur.Milliseconds() <= 15)
 }
