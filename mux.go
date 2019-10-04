@@ -19,6 +19,7 @@ func (h Hash) String() string {
 // Mux is the minimal set of functions a redis multiplexer must implement
 type Mux interface {
 	All() []Client
+	GetMapping(Hash) Client
 	Invalidate(Hash) error
 	InvalidateMany(...Hash) error
 	On(Hash) Client
@@ -102,6 +103,10 @@ func (m BaseMux) All() []Client {
 	return m.clients
 }
 
+func (m BaseMux) GetMapping(hash Hash) Client {
+	return m.onFromHashClient(hash)
+}
+
 // WithContext returns a *BaseMux that runs operations under `ctx` and all its
 // HashClient and []Client are also patched to run operations under `ctx`
 func (m BaseMux) WithContext(ctx context.Context) Mux {
@@ -154,6 +159,9 @@ func (m BaseMux) on(hash Hash) Client {
 	return m.SaveMapping(client, hash)
 }
 
+// SaveMapping associates a hash to a client.
+// BaseMux's implementation are called from methods that are holding a lock
+// for custom implementations, do it under a lock as well (e.g WithLockOn)
 func (m BaseMux) SaveMapping(client Client, hash Hash) Client {
 	if res := m.hashClient.Set(m.buildHashKey(hash), client.Options().Addr, m.hashMapTTL); res.Err() != nil {
 		return NewErrClient(res.Err())
@@ -182,6 +190,9 @@ func (m BaseMux) OnMany(hash Hash, many ...Hash) Client {
 	return client
 }
 
+// SaveMappings associates hashes to a client.
+// SaveMappings BaseMux's implementation are called from methods that are holding a lock
+// for custom implementations, do it under a lock as well (e.g WithLockOn)
 func (m BaseMux) SaveMappings(client Client, hash Hash, many ...Hash) Client {
 	addr := client.Options().Addr
 	pipe := client.TxPipeline()

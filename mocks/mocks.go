@@ -890,6 +890,20 @@ func (mr *MockMuxMockRecorder) All() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "All", reflect.TypeOf((*MockMux)(nil).All))
 }
 
+// GetMapping mocks base method
+func (m *MockMux) GetMapping(arg0 go_extensions_redis.Hash) go_extensions_redis.Client {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetMapping", arg0)
+	ret0, _ := ret[0].(go_extensions_redis.Client)
+	return ret0
+}
+
+// GetMapping indicates an expected call of GetMapping
+func (mr *MockMuxMockRecorder) GetMapping(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMapping", reflect.TypeOf((*MockMux)(nil).GetMapping), arg0)
+}
+
 // Invalidate mocks base method
 func (m *MockMux) Invalidate(arg0 go_extensions_redis.Hash) error {
 	m.ctrl.T.Helper()
