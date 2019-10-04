@@ -955,6 +955,39 @@ func (mr *MockMuxMockRecorder) OnMany(arg0 interface{}, arg1 ...interface{}) *go
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "OnMany", reflect.TypeOf((*MockMux)(nil).OnMany), varargs...)
 }
 
+// SaveMapping mocks base method
+func (m *MockMux) SaveMapping(arg0 go_extensions_redis.Client, arg1 go_extensions_redis.Hash) go_extensions_redis.Client {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SaveMapping", arg0, arg1)
+	ret0, _ := ret[0].(go_extensions_redis.Client)
+	return ret0
+}
+
+// SaveMapping indicates an expected call of SaveMapping
+func (mr *MockMuxMockRecorder) SaveMapping(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveMapping", reflect.TypeOf((*MockMux)(nil).SaveMapping), arg0, arg1)
+}
+
+// SaveMappings mocks base method
+func (m *MockMux) SaveMappings(arg0 go_extensions_redis.Client, arg1 go_extensions_redis.Hash, arg2 ...go_extensions_redis.Hash) go_extensions_redis.Client {
+	m.ctrl.T.Helper()
+	varargs := []interface{}{arg0, arg1}
+	for _, a := range arg2 {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "SaveMappings", varargs...)
+	ret0, _ := ret[0].(go_extensions_redis.Client)
+	return ret0
+}
+
+// SaveMappings indicates an expected call of SaveMappings
+func (mr *MockMuxMockRecorder) SaveMappings(arg0, arg1 interface{}, arg2 ...interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]interface{}{arg0, arg1}, arg2...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveMappings", reflect.TypeOf((*MockMux)(nil).SaveMappings), varargs...)
+}
+
 // WithContext mocks base method
 func (m *MockMux) WithContext(arg0 context.Context) go_extensions_redis.Mux {
 	m.ctrl.T.Helper()

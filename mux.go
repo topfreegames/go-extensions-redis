@@ -19,10 +19,12 @@ func (h Hash) String() string {
 // Mux is the minimal set of functions a redis multiplexer must implement
 type Mux interface {
 	All() []Client
-	On(Hash) Client
-	OnMany(Hash, ...Hash) Client
 	Invalidate(Hash) error
 	InvalidateMany(...Hash) error
+	On(Hash) Client
+	OnMany(Hash, ...Hash) Client
+	SaveMapping(client Client, hash Hash) Client
+	SaveMappings(client Client, hash Hash, many ...Hash) Client
 	WithContext(context.Context) Mux
 }
 
@@ -148,10 +150,15 @@ func (m BaseMux) on(hash Hash) Client {
 	}
 	// if not: draw a random client and store the mapping
 	draw := rand.Int63n(m.lenClients)
-	if res := m.hashClient.Set(m.buildHashKey(hash), m.addrs[draw], m.hashMapTTL); res.Err() != nil {
+	client := m.clients[draw]
+	return m.SaveMapping(client, hash)
+}
+
+func (m BaseMux) SaveMapping(client Client, hash Hash) Client {
+	if res := m.hashClient.Set(m.buildHashKey(hash), client.Options().Addr, m.hashMapTTL); res.Err() != nil {
 		return NewErrClient(res.Err())
 	}
-	return m.clients[draw]
+	return client
 }
 
 // OnMany guarantees that all operations for `hash` and `many` are executed on the same Client
@@ -163,27 +170,36 @@ func (m BaseMux) OnMany(hash Hash, many ...Hash) Client {
 	var client Client
 	err := m.WithLockOn(hash, func() {
 		client = m.on(hash)
-		addr := client.Options().Addr
-		pipe := client.TxPipeline()
-		pipe.PExpire(m.buildHashKey(hash), m.hashMapTTL)
-		pairs := make([]interface{}, len(many)*2)
-		for i := range many {
-			key := m.buildHashKey(many[i])
-			pairs[2*i] = key
-			pairs[2*i+1] = addr
-			pipe.PExpire(key, m.hashMapTTL)
+		if _, ok := client.(*ErrClient); ok {
+			// client is ErrClient, so don't save mappings
+			return
 		}
-		if res := m.hashClient.MSet(pairs...); res.Err() != nil {
-			client = NewErrClient(res.Err())
-		}
-		if m.hashMapTTL > 0 {
-			if _, err := pipe.Exec(); err != nil {
-				client = NewErrClient(err)
-			}
-		}
+		client = m.SaveMappings(client, hash, many...)
 	})
 	if err != nil {
 		return NewErrClient(err)
+	}
+	return client
+}
+
+func (m BaseMux) SaveMappings(client Client, hash Hash, many ...Hash) Client {
+	addr := client.Options().Addr
+	pipe := client.TxPipeline()
+	pipe.PExpire(m.buildHashKey(hash), m.hashMapTTL)
+	pairs := make([]interface{}, len(many)*2)
+	for i := range many {
+		key := m.buildHashKey(many[i])
+		pairs[2*i] = key
+		pairs[2*i+1] = addr
+		pipe.PExpire(key, m.hashMapTTL)
+	}
+	if res := m.hashClient.MSet(pairs...); res.Err() != nil {
+		client = NewErrClient(res.Err())
+	}
+	if m.hashMapTTL > 0 {
+		if _, err := pipe.Exec(); err != nil {
+			client = NewErrClient(err)
+		}
 	}
 	return client
 }
