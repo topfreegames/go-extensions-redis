@@ -195,7 +195,7 @@ func (m BaseMux) OnMany(hash Hash, many ...Hash) Client {
 // for custom implementations, do it under a lock as well (e.g WithLockOn)
 func (m BaseMux) SaveMappings(client Client, hash Hash, many ...Hash) Client {
 	addr := client.Options().Addr
-	pipe := client.TxPipeline()
+	pipe := m.hashClient.TxPipeline()
 	pipe.PExpire(m.buildHashKey(hash), m.hashMapTTL)
 	pairs := make([]interface{}, len(many)*2)
 	for i := range many {
